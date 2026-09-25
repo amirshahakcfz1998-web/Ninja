@@ -1,0 +1,21 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0e1424;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{touch-action:none}
+#game{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 20%,#25375a 0,#10182a 48%,#080c16 100%)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.pill{min-width:82px;padding:7px 11px;border:1px solid rgba(255,255,255,.13);border-radius:15px;background:rgba(10,15,28,.55);backdrop-filter:blur(9px);color:#fff;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.pill .label{display:block;font-size:9px;letter-spacing:1.5px;opacity:.62}
+.pill strong{font-size:18px;line-height:20px}
+.combo-pill{border-color:rgba(255,190,67,.35)}
+#comboText{color:#ffd166}
+#lives{position:absolute;top:calc(env(safe-area-inset-top) + 82px);left:14px;font-size:18px;letter-spacing:4px;text-shadow:0 2px 8px #000;pointer-events:none}
+#pauseButton{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 78px);width:38px;height:38px;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(10,15,28,.55);color:#fff;font-size:17px}
+#message,#pause{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,7,15,.45);backdrop-filter:blur(4px)}
+.card{width:min(86%,360px);padding:30px 22px;border:1px solid rgba(255,255,255,.14);border-radius:26px;background:rgba(15,23,40,.9);box-shadow:0 20px 70px rgba(0,0,0,.45);text-align:center;color:#fff}
+.logo{font-size:55px}
+h1{margin:6px 0 8px;font-size:29px;letter-spacing:1px}
+p{margin:0 0 24px;color:#aeb9cb}
+button{font:inherit;font-weight:800;cursor:pointer}
+.card button{width:100%;border:0;border-radius:16px;padding:15px;background:linear-gradient(135deg,#ffcc4d,#ff7a3d);color:#15100a;box-shadow:0 10px 28px rgba(255,150,50,.22)}
+.hidden{display:none!important}
