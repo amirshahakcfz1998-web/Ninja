@@ -7,7 +7,7 @@ directory = "./public"
 binding = "ASSETS"
 
 [vars]
-GAME_SHORT_NAME = "ninjafruit"
+GAME_SHORT_NAME = "Game"
 
 [observability]
 enabled = true
