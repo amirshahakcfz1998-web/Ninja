@@ -12,23 +12,30 @@ async function telegram(env, method, body) {
     throw new Error("BOT_TOKEN is missing");
   }
 
-  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`;
+  const response = await fetch(
+    `https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(body)
+    }
+  );
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-
-  return res.json();
+  return response.json();
 }
 
-function gameUrl(request) {
+
+/* ---------------------------------------------
+   GAME URL
+--------------------------------------------- */
+
+function getGameUrl(request) {
   const url = new URL(request.url);
   return `${url.origin}/`;
 }
+
 
 /* ---------------------------------------------
    TELEGRAM UPDATE
@@ -48,6 +55,7 @@ async function handleTelegramUpdate(update, env, request) {
       callback.game_short_name !==
       env.GAME_SHORT_NAME
     ) {
+
       await telegram(env, "answerCallbackQuery", {
         callback_query_id: callback.id,
         text: "Game not found.",
@@ -58,12 +66,12 @@ async function handleTelegramUpdate(update, env, request) {
     }
 
     /*
-     * Tell Telegram where the HTML5 game is.
+     * Open Ninja Fruit.
      */
 
     await telegram(env, "answerCallbackQuery", {
       callback_query_id: callback.id,
-      url: gameUrl(request),
+      url: getGameUrl(request),
       cache_time: 0
     });
 
@@ -81,23 +89,28 @@ async function handleTelegramUpdate(update, env, request) {
     return;
   }
 
-  const text = message.text.trim().toLowerCase();
+  const text =
+    message.text.trim().toLowerCase();
 
   const botUsername =
     (env.BOT_USERNAME || "").toLowerCase();
+
 
   const commands = [
     "/start",
     "/game",
     "/ninja",
+
+    `/start@${botUsername}`,
     `/game@${botUsername}`,
-    `/ninja@${botUsername}`,
-    `/start@${botUsername}`
+    `/ninja@${botUsername}`
   ];
+
 
   if (!commands.includes(text)) {
     return;
   }
+
 
   if (!env.GAME_SHORT_NAME) {
     return;
@@ -105,7 +118,7 @@ async function handleTelegramUpdate(update, env, request) {
 
 
   /*
-   * SEND GAME MESSAGE
+   * SEND GAME
    */
 
   await telegram(env, "sendGame", {
@@ -137,6 +150,7 @@ async function setWebhook(request, env) {
     );
   }
 
+
   if (!env.WEBHOOK_SECRET) {
     return json(
       {
@@ -147,10 +161,13 @@ async function setWebhook(request, env) {
     );
   }
 
-  const url = new URL(request.url);
+
+  const url =
+    new URL(request.url);
 
   const secret =
     url.searchParams.get("secret");
+
 
   if (secret !== env.WEBHOOK_SECRET) {
     return json(
@@ -162,21 +179,25 @@ async function setWebhook(request, env) {
     );
   }
 
+
   const webhookUrl =
     `${url.origin}/telegram/webhook`;
 
-  const result = await telegram(
-    env,
-    "setWebhook",
-    {
-      url: webhookUrl,
 
-      allowed_updates: [
-        "message",
-        "callback_query"
-      ]
-    }
-  );
+  const result =
+    await telegram(
+      env,
+      "setWebhook",
+      {
+        url: webhookUrl,
+
+        allowed_updates: [
+          "message",
+          "callback_query"
+        ]
+      }
+    );
+
 
   return json(result);
 }
@@ -186,7 +207,18 @@ async function setWebhook(request, env) {
    WEBHOOK INFO
 --------------------------------------------- */
 
-async function webhookInfo(env) {
+async function getWebhookInfo(env) {
+
+  if (!env.BOT_TOKEN) {
+    return json(
+      {
+        ok: false,
+        error: "BOT_TOKEN is missing"
+      },
+      500
+    );
+  }
+
 
   const result =
     await telegram(
@@ -194,6 +226,7 @@ async function webhookInfo(env) {
       "getWebhookInfo",
       {}
     );
+
 
   return json(result);
 }
@@ -207,9 +240,18 @@ async function health(env) {
 
   return json({
     ok: true,
-    game: env.GAME_SHORT_NAME || null,
-    worker: "ninja-fruit",
-    telegramConfigured: Boolean(env.BOT_TOKEN)
+
+    game:
+      env.GAME_SHORT_NAME || null,
+
+    worker:
+      "ninja-fruit",
+
+    telegramConfigured:
+      Boolean(env.BOT_TOKEN),
+
+    webhookConfigured:
+      Boolean(env.WEBHOOK_SECRET)
   });
 }
 
@@ -226,9 +268,7 @@ export default {
       new URL(request.url);
 
 
-    /*
-     * HEALTH
-     */
+    /* HEALTH */
 
     if (
       url.pathname === "/api/health" &&
@@ -238,9 +278,7 @@ export default {
     }
 
 
-    /*
-     * SET WEBHOOK
-     */
+    /* SET WEBHOOK */
 
     if (
       url.pathname === "/api/set-webhook" &&
@@ -250,21 +288,17 @@ export default {
     }
 
 
-    /*
-     * WEBHOOK INFO
-     */
+    /* WEBHOOK INFO */
 
     if (
       url.pathname === "/api/webhook-info" &&
       request.method === "GET"
     ) {
-      return webhookInfo(env);
+      return getWebhookInfo(env);
     }
 
 
-    /*
-     * TELEGRAM WEBHOOK
-     */
+    /* TELEGRAM WEBHOOK */
 
     if (
       url.pathname === "/telegram/webhook" &&
@@ -276,6 +310,11 @@ export default {
         const update =
           await request.json();
 
+
+        /*
+         * Respond quickly to Telegram.
+         */
+
         ctx.waitUntil(
           handleTelegramUpdate(
             update,
@@ -283,6 +322,7 @@ export default {
             request
           )
         );
+
 
         return json({
           ok: true
@@ -293,7 +333,8 @@ export default {
         return json(
           {
             ok: false,
-            error: "Invalid Telegram update"
+            error:
+              "Invalid Telegram update"
           },
           400
         );
@@ -301,9 +342,7 @@ export default {
     }
 
 
-    /*
-     * GAME FILES
-     */
+    /* STATIC GAME */
 
     return env.ASSETS.fetch(request);
   }
