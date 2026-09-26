@@ -334,5 +334,6 @@
   // Initial screen
   updateLives();
   updateHud();
+  message.classList.remove("hidden");
 })();
-      
+    
