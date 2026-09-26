@@ -208,21 +208,38 @@
   }
 
   async function submitScore(value){
-    // Telegram HTML5 Games can expose a game proxy. Modern Telegram clients may
-    // provide TelegramGameProxy.shareScore(). We also try the legacy function.
+    // 1. Try official TelegramGameProxy (opens share sheet)
     try{
       if(window.TelegramGameProxy?.shareScore){
         window.TelegramGameProxy.shareScore(value);
-        return;
-      }
-    }catch{}
-    try{
-      if(window.TelegramGameProxy?.setScore){
+      } else if(window.TelegramGameProxy?.setScore){
         window.TelegramGameProxy.setScore(value);
-        return;
       }
     }catch{}
-    // No proxy: keep local best. This happens when opened directly in a normal browser.
+
+    // 2. Also send to our Worker for group leaderboard (Top Players)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const uid = params.get("uid");
+      const cid = params.get("cid");
+      const mid = params.get("mid");
+      const imid = params.get("imid");
+
+      if (uid && (cid && mid || imid)) {
+        const body = {
+          score: value,
+          uid: Number(uid),
+          cid: cid || undefined,
+          mid: mid || undefined,
+          imid: imid || undefined
+        };
+        await fetch("/api/submit-score", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body)
+        });
+      }
+    } catch {}
   }
 
   function setPointer(e){
@@ -317,6 +334,5 @@
   // Initial screen
   updateLives();
   updateHud();
-  message.classList.remove("hidden");
 })();
-        
+      
