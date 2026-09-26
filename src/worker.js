@@ -52,6 +52,34 @@ function getGameUrl(request, extraParams = {}) {
 async function handleTelegramUpdate(update, env, request) {
 
   /*
+   * INLINE QUERY (when user types @bot in a chat/group)
+   */
+
+  const inlineQuery = update?.inline_query;
+
+  if (inlineQuery) {
+    if (!env.GAME_SHORT_NAME) {
+      return;
+    }
+
+    await telegram(env, "answerInlineQuery", {
+      inline_query_id: inlineQuery.id,
+      results: [
+        {
+          type: "game",
+          id: "1",
+          game_short_name: env.GAME_SHORT_NAME
+        }
+      ],
+      cache_time: 30,
+      is_personal: false
+    });
+
+    return;
+  }
+
+
+  /*
    * USER PRESSED PLAY
    */
 
@@ -212,7 +240,8 @@ async function setWebhook(request, env) {
 
         allowed_updates: [
           "message",
-          "callback_query"
+          "callback_query",
+          "inline_query"
         ]
       }
     );
@@ -435,4 +464,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-      
