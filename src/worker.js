@@ -31,9 +31,17 @@ async function telegram(env, method, body) {
    GAME URL
 --------------------------------------------- */
 
-function getGameUrl(request) {
+function getGameUrl(request, extraParams = {}) {
   const url = new URL(request.url);
-  return `${url.origin}/`;
+  const gameUrl = new URL(`${url.origin}/`);
+
+  for (const [key, value] of Object.entries(extraParams)) {
+    if (value !== undefined && value !== null) {
+      gameUrl.searchParams.set(key, String(value));
+    }
+  }
+
+  return gameUrl.toString();
 }
 
 
@@ -66,12 +74,23 @@ async function handleTelegramUpdate(update, env, request) {
     }
 
     /*
-     * Open Ninja Fruit.
+     * Open Ninja Fruit with context for high scores.
      */
+
+    const params = {
+      uid: callback.from?.id,
+      cid: callback.message?.chat?.id,
+      mid: callback.message?.message_id
+    };
+
+    // If it was an inline message
+    if (callback.inline_message_id) {
+      params.imid = callback.inline_message_id;
+    }
 
     await telegram(env, "answerCallbackQuery", {
       callback_query_id: callback.id,
-      url: getGameUrl(request),
+      url: getGameUrl(request, params),
       cache_time: 0
     });
 
@@ -233,6 +252,65 @@ async function getWebhookInfo(env) {
 
 
 /* ---------------------------------------------
+   SUBMIT SCORE (for group leaderboards)
+--------------------------------------------- */
+
+async function submitScore(request, env) {
+  if (!env.BOT_TOKEN) {
+    return json({ ok: false, error: "BOT_TOKEN is missing" }, 500);
+  }
+
+  let data;
+  try {
+    if (request.method === "POST") {
+      data = await request.json();
+    } else {
+      const url = new URL(request.url);
+      data = {
+        score: Number(url.searchParams.get("score")),
+        uid: Number(url.searchParams.get("uid")),
+        cid: url.searchParams.get("cid"),
+        mid: url.searchParams.get("mid"),
+        imid: url.searchParams.get("imid")
+      };
+    }
+  } catch {
+    return json({ ok: false, error: "Invalid body" }, 400);
+  }
+
+  const score = Number(data.score);
+  const userId = Number(data.uid);
+
+  if (!Number.isFinite(score) || score < 0 || !Number.isFinite(userId)) {
+    return json({ ok: false, error: "Invalid score or user" }, 400);
+  }
+
+  const body = {
+    user_id: userId,
+    score: Math.floor(score),
+    force: false,
+    disable_edit_message: false
+  };
+
+  if (data.imid) {
+    body.inline_message_id = String(data.imid);
+  } else if (data.cid && data.mid) {
+    body.chat_id = Number(data.cid);
+    body.message_id = Number(data.mid);
+  } else {
+    return json({ ok: false, error: "Missing chat/message context" }, 400);
+  }
+
+  try {
+    const result = await telegram(env, "setGameScore", body);
+    return json({ ok: true, result });
+  } catch (e) {
+    return json({ ok: false, error: String(e.message || e) }, 500);
+  }
+}
+
+
+/* ---------------------------------------------
    HEALTH
 --------------------------------------------- */
 
@@ -298,6 +376,16 @@ export default {
     }
 
 
+    /* SUBMIT SCORE */
+
+    if (
+      url.pathname === "/api/submit-score" &&
+      (request.method === "GET" || request.method === "POST")
+    ) {
+      return submitScore(request, env);
+    }
+
+
     /* TELEGRAM WEBHOOK */
 
     if (
@@ -347,3 +435,4 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+      
