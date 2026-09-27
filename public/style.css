@@ -3,15 +3,17 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0e1424;fon
 body{touch-action:none}
 #game{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 20%,#25375a 0,#10182a 48%,#080c16 100%)}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#hud{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+#hud{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;z-index:5}
 .pill{min-width:82px;padding:7px 11px;border:1px solid rgba(255,255,255,.13);border-radius:15px;background:rgba(10,15,28,.55);backdrop-filter:blur(9px);color:#fff;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .pill .label{display:block;font-size:9px;letter-spacing:1.5px;opacity:.62}
 .pill strong{font-size:18px;line-height:20px}
-.combo-pill{border-color:rgba(255,190,67,.35)}
+.combo-pill{border-color:rgba(255,190,67,.35);position:relative}
 #comboText{color:#ffd166}
-#lives{position:absolute;top:calc(env(safe-area-inset-top) + 82px);left:14px;font-size:18px;letter-spacing:4px;text-shadow:0 2px 8px #000;pointer-events:none}
-#pauseButton{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 78px);width:38px;height:38px;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(10,15,28,.55);color:#fff;font-size:17px}
-#message,#pause{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,7,15,.45);backdrop-filter:blur(4px)}
+.level{margin-top:3px;font-size:11px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.7)}
+#lives{position:absolute;top:calc(env(safe-area-inset-top) + 82px);left:14px;font-size:20px;letter-spacing:5px;pointer-events:none;z-index:5;color:#ff3b5c;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+#lives span{color:#ff3b5c}
+#pauseButton{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 78px);width:38px;height:38px;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(10,15,28,.55);color:#fff;font-size:17px;z-index:5}
+#message,#pause{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,7,15,.45);backdrop-filter:blur(4px);z-index:10}
 .card{width:min(86%,360px);padding:30px 22px;border:1px solid rgba(255,255,255,.14);border-radius:26px;background:rgba(15,23,40,.9);box-shadow:0 20px 70px rgba(0,0,0,.45);text-align:center;color:#fff}
 .logo{font-size:55px}
 h1{margin:6px 0 8px;font-size:29px;letter-spacing:1px}
