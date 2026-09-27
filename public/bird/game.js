@@ -196,11 +196,15 @@
   }
 
   async function submitScore(value) {
+    let status = "no-context";
+
     try {
       if (window.TelegramGameProxy?.shareScore) {
         window.TelegramGameProxy.shareScore(value);
+        status = "proxy-ok";
       } else if (window.TelegramGameProxy?.setScore) {
         window.TelegramGameProxy.setScore(value);
+        status = "proxy-ok";
       }
     } catch {}
 
@@ -221,11 +225,24 @@
         if (cid) body.cid = cid;
         if (mid) body.mid = mid;
 
-        await fetch("/api/submit-score", {
+        const res = await fetch("/api/submit-score", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body)
         });
+        const data = await res.json().catch(() => ({}));
+        status = data.ok ? "server-ok" : ("server-fail:" + (data.error || res.status));
+      } else {
+        status = "missing-params uid=" + (uid||"null") + " imid=" + (imid||"null");
+      }
+    } catch (e) {
+      status = "error:" + (e.message || "unknown");
+    }
+
+    try {
+      const p = document.getElementById("messageText");
+      if (p) {
+        p.innerHTML = `Score: <b>${value}</b><br>Best: <b>${best}</b><br><br><small style="opacity:.65;font-size:11px;word-break:break-all">${status}</small>`;
       }
     } catch {}
   }
@@ -298,4 +315,4 @@
   // Show start screen
   message.classList.remove("hidden");
 })();
-  
+      
