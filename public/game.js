@@ -406,6 +406,7 @@
   }
 
   async function submitScore(value) {
+    // 1. Official Telegram share
     try {
       if (window.TelegramGameProxy?.shareScore) {
         window.TelegramGameProxy.shareScore(value);
@@ -414,27 +415,37 @@
       }
     } catch {}
 
+    // 2. Send to our Worker (for group & friend leaderboards)
     try {
       const params = new URLSearchParams(window.location.search);
-      const uid = params.get("uid");
-      const cid = params.get("cid");
-      const mid = params.get("mid");
-      const imid = params.get("imid");
+      let uid = params.get("uid");
+      let cid = params.get("cid");
+      let mid = params.get("mid");
+      let imid = params.get("imid");
 
-      if (uid && ((cid && mid) || imid)) {
+      // Fallback: try Telegram WebApp user id
+      if (!uid && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+        uid = String(window.Telegram.WebApp.initDataUnsafe.user.id);
+      }
+
+      if (uid && (imid || (cid && mid))) {
+        const body = {
+          score: value,
+          uid: Number(uid)
+        };
+        if (imid) body.imid = imid;
+        if (cid) body.cid = cid;
+        if (mid) body.mid = mid;
+
         await fetch("/api/submit-score", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            score: value,
-            uid: Number(uid),
-            cid: cid || undefined,
-            mid: mid || undefined,
-            imid: imid || undefined
-          })
+          body: JSON.stringify(body)
         });
       }
-    } catch {}
+    } catch (e) {
+      console.log("submitScore error", e);
+    }
   }
 
   function setPointer(e) {
@@ -560,4 +571,4 @@
   updateHud();
   message.classList.remove("hidden");
 })();
-    
+      
