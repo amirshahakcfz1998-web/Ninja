@@ -313,7 +313,7 @@ async function submitScore(request, env) {
   const body = {
     user_id: userId,
     score: Math.floor(score),
-    force: false,
+    force: true,
     disable_edit_message: false
   };
 
@@ -387,4 +387,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-    
