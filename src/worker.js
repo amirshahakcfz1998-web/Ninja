@@ -42,7 +42,7 @@ function getGameUrl(request, gamePath = "/", extraParams = {}) {
 }
 
 function getGamePath(shortName) {
-  if (shortName === "flyingbird") return "/bird/";
+  if (shortName === "Flyingbird") return "/bird/";
   return "/"; // ninja fruit (default)
 }
 
