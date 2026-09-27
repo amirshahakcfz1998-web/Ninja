@@ -156,6 +156,7 @@
     ctx.restore();
   }
 
+
   function drawFruit(o) {
     ctx.save();
     ctx.translate(o.x, o.y);
@@ -163,49 +164,43 @@
 
     if (o.type === "bomb") {
       // Outer glow
-      ctx.shadowColor = "rgba(255,50,50,0.45)";
-      ctx.shadowBlur = 24;
+      ctx.shadowColor = "rgba(255,50,50,0.5)";
+      ctx.shadowBlur = 26;
 
       // Main body
-      ctx.fillStyle = "#161a24";
+      ctx.fillStyle = "#151920";
       ctx.beginPath();
       ctx.arc(0, 0, o.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
       // Top highlight
-      ctx.fillStyle = "#2a3040";
+      ctx.fillStyle = "#2a3140";
       ctx.beginPath();
-      ctx.arc(-o.r * 0.25, -o.r * 0.28, o.r * 0.55, 0, Math.PI * 2);
+      ctx.arc(-o.r * 0.28, -o.r * 0.3, o.r * 0.52, 0, Math.PI * 2);
       ctx.fill();
 
-      // Metal ring
-      ctx.strokeStyle = "#4a5160";
-      ctx.lineWidth = 3;
+      // Metal band
+      ctx.strokeStyle = "#555e70";
+      ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.arc(0, 0, o.r * 0.78, 0, Math.PI * 2);
+      ctx.arc(0, 0, o.r * 0.76, 0, Math.PI * 2);
       ctx.stroke();
 
       // Fuse
       ctx.strokeStyle = "#e8a040";
-      ctx.lineWidth = 4.8;
+      ctx.lineWidth = 5;
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(o.r * 0.28, -o.r * 0.68);
-      ctx.quadraticCurveTo(o.r * 0.75, -o.r * 1.2, o.r * 1.0, -o.r * 0.72);
+      ctx.moveTo(o.r * 0.3, -o.r * 0.7);
+      ctx.quadraticCurveTo(o.r * 0.8, -o.r * 1.25, o.r * 1.05, -o.r * 0.75);
       ctx.stroke();
 
-      // Spark (animated)
-      const pulse = 0.65 + Math.sin(performance.now() * 0.025) * 0.35;
-      ctx.fillStyle = `rgba(255,${140 + 90 * pulse | 0},40,${0.7 + 0.3 * pulse})`;
+      // Animated spark
+      const pulse = 0.6 + Math.sin(performance.now() * 0.028) * 0.4;
+      ctx.fillStyle = `rgba(255,${130 + 100 * pulse | 0},30,${0.75 + 0.25 * pulse})`;
       ctx.beginPath();
-      ctx.arc(o.r * 1.0, -o.r * 0.72, 6 * pulse, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Warning mark
-      ctx.fillStyle = "rgba(255,80,80,0.25)";
-      ctx.beginPath();
-      ctx.arc(0, 3, o.r * 0.32, 0, Math.PI * 2);
+      ctx.arc(o.r * 1.05, -o.r * 0.75, 6.5 * pulse, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -216,81 +211,90 @@
 
     // Soft outer glow
     ctx.shadowColor = d.color;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 20;
 
-    // Main body
+    // Main body with slight gradient feel
     ctx.fillStyle = d.color;
     ctx.beginPath();
     ctx.arc(0, 0, o.r, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Inner flesh (offset for 3D feel)
+    // Inner lighter part (3D volume)
     ctx.fillStyle = d.inner;
-    ctx.globalAlpha = 0.93;
+    ctx.globalAlpha = 0.9;
     ctx.beginPath();
-    ctx.arc(-o.r * 0.16, -o.r * 0.16, o.r * 0.6, 0, Math.PI * 2);
+    ctx.arc(-o.r * 0.18, -o.r * 0.2, o.r * 0.62, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Watermelon stripes (only for watermelon)
+    // Watermelon stripes
     if (d.name === "watermelon") {
       ctx.save();
-      ctx.globalAlpha = 0.25;
-      ctx.strokeStyle = "#1e8449";
-      ctx.lineWidth = 3.5;
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = "#1b5e20";
+      ctx.lineWidth = 4;
       for (let i = -2; i <= 2; i++) {
         ctx.beginPath();
-        ctx.ellipse(0, 0, o.r * 0.85, o.r * 0.35, i * 0.4, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, o.r * 0.88, o.r * 0.32, i * 0.38, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.restore();
     }
 
-    // Kiwi seeds (only for kiwi)
+    // Kiwi seeds + center
     if (d.name === "kiwi") {
+      // White center ring
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.beginPath();
+      ctx.arc(0, 0, o.r * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      // Seeds
       ctx.fillStyle = "#3e2723";
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + 0.2;
         ctx.beginPath();
-        ctx.arc(Math.cos(a) * o.r * 0.35, Math.sin(a) * o.r * 0.35, 1.8, 0, Math.PI * 2);
+        ctx.ellipse(Math.cos(a) * o.r * 0.38, Math.sin(a) * o.r * 0.38, 2.2, 1.2, a, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // Main highlight (shiny look)
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    // Big glossy highlight
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
-    ctx.ellipse(-o.r * 0.3, -o.r * 0.35, o.r * 0.24, o.r * 0.15, -0.55, 0, Math.PI * 2);
+    ctx.ellipse(-o.r * 0.32, -o.r * 0.38, o.r * 0.26, o.r * 0.16, -0.55, 0, Math.PI * 2);
     ctx.fill();
 
-    // Secondary smaller shine
-    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    // Smaller secondary shine
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
     ctx.beginPath();
-    ctx.arc(o.r * 0.28, o.r * 0.18, o.r * 0.11, 0, Math.PI * 2);
+    ctx.arc(o.r * 0.3, o.r * 0.2, o.r * 0.1, 0, Math.PI * 2);
     ctx.fill();
 
     // Stem
     ctx.fillStyle = "#4e342e";
-    ctx.fillRect(-2.4, -o.r * 1.02, 4.8, 11);
+    ctx.beginPath();
+    ctx.roundRect(-2.6, -o.r * 1.05, 5.2, 12, 2);
+    ctx.fill();
 
     // Leaf
     if (d.leaf) {
       ctx.fillStyle = d.leaf;
       ctx.beginPath();
-      ctx.ellipse(7, -o.r * 0.92, 8, 3.8, 0.55, 0, Math.PI * 2);
+      ctx.ellipse(8, -o.r * 0.95, 9, 4.2, 0.5, 0, Math.PI * 2);
       ctx.fill();
-      // Leaf vein
-      ctx.strokeStyle = "rgba(0,0,0,0.15)";
-      ctx.lineWidth = 1;
+      // Vein
+      ctx.strokeStyle = "rgba(0,0,0,0.18)";
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(3, -o.r * 0.92);
-      ctx.lineTo(11, -o.r * 0.92);
+      ctx.moveTo(2, -o.r * 0.95);
+      ctx.lineTo(14, -o.r * 0.95);
       ctx.stroke();
     }
 
     ctx.restore();
   }
+
 
   function drawTrail() {
     ctx.save();
@@ -598,3 +602,4 @@
     }
   } catch {}
 })();
+          
