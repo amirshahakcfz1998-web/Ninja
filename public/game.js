@@ -406,16 +406,20 @@
   }
 
   async function submitScore(value) {
+    let status = "no-context";
+
     // 1. Official Telegram share
     try {
       if (window.TelegramGameProxy?.shareScore) {
         window.TelegramGameProxy.shareScore(value);
+        status = "proxy-ok";
       } else if (window.TelegramGameProxy?.setScore) {
         window.TelegramGameProxy.setScore(value);
+        status = "proxy-ok";
       }
     } catch {}
 
-    // 2. Send to our Worker (for group & friend leaderboards)
+    // 2. Send to our Worker
     try {
       const params = new URLSearchParams(window.location.search);
       let uid = params.get("uid");
@@ -423,29 +427,37 @@
       let mid = params.get("mid");
       let imid = params.get("imid");
 
-      // Fallback: try Telegram WebApp user id
       if (!uid && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
         uid = String(window.Telegram.WebApp.initDataUnsafe.user.id);
       }
 
       if (uid && (imid || (cid && mid))) {
-        const body = {
-          score: value,
-          uid: Number(uid)
-        };
+        const body = { score: value, uid: Number(uid) };
         if (imid) body.imid = imid;
         if (cid) body.cid = cid;
         if (mid) body.mid = mid;
 
-        await fetch("/api/submit-score", {
+        const res = await fetch("/api/submit-score", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body)
         });
+        const data = await res.json().catch(() => ({}));
+        status = data.ok ? "server-ok" : ("server-fail:" + (data.error || res.status));
+      } else {
+        status = "missing-params uid=" + (uid||"null") + " imid=" + (imid||"null");
       }
     } catch (e) {
-      console.log("submitScore error", e);
+      status = "error:" + (e.message || "unknown");
     }
+
+    // Show status on end screen
+    try {
+      const p = document.getElementById("messageText");
+      if (p) {
+        p.innerHTML = `Score: <b>${value}</b><br>Best: <b>${best}</b><br><br><small style="opacity:.65;font-size:11px;word-break:break-all">${status}</small>`;
+      }
+    } catch {}
   }
 
   function setPointer(e) {
@@ -586,4 +598,3 @@
     }
   } catch {}
 })();
-  
