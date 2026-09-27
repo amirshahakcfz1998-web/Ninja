@@ -80,49 +80,100 @@ async function handleTelegramUpdate(update, env, request) {
 
 
   /*
-   * USER PRESSED PLAY
+   * CALLBACK QUERY (buttons + Play button)
    */
 
   const callback = update?.callback_query;
 
-  if (callback?.game_short_name) {
+  if (callback) {
 
-    if (
-      callback.game_short_name !==
-      env.GAME_SHORT_NAME
-    ) {
+    // Play Game button from game message
+    if (callback.game_short_name) {
+
+      if (callback.game_short_name !== env.GAME_SHORT_NAME) {
+        await telegram(env, "answerCallbackQuery", {
+          callback_query_id: callback.id,
+          text: "Game not found.",
+          show_alert: true
+        });
+        return;
+      }
+
+      const params = {
+        uid: callback.from?.id,
+        cid: callback.message?.chat?.id,
+        mid: callback.message?.message_id
+      };
+
+      if (callback.inline_message_id) {
+        params.imid = callback.inline_message_id;
+      }
 
       await telegram(env, "answerCallbackQuery", {
         callback_query_id: callback.id,
-        text: "Game not found.",
-        show_alert: true
+        url: getGameUrl(request, params),
+        cache_time: 0
       });
 
       return;
     }
 
-    /*
-     * Open Ninja Fruit with context for high scores.
-     */
+    // Menu buttons
+    const data = callback.data;
 
-    const params = {
-      uid: callback.from?.id,
-      cid: callback.message?.chat?.id,
-      mid: callback.message?.message_id
-    };
+    if (data === "play_solo") {
+      await telegram(env, "answerCallbackQuery", {
+        callback_query_id: callback.id
+      });
 
-    // If it was an inline message
-    if (callback.inline_message_id) {
-      params.imid = callback.inline_message_id;
+      await telegram(env, "sendGame", {
+        chat_id: callback.message.chat.id,
+        game_short_name: env.GAME_SHORT_NAME
+      });
+
+      return;
     }
 
-    await telegram(env, "answerCallbackQuery", {
-      callback_query_id: callback.id,
-      url: getGameUrl(request, params),
-      cache_time: 0
-    });
+    if (data === "play_friend") {
+      await telegram(env, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "یک دوست را انتخاب کن و بازی را برایش بفرست 👇",
+        show_alert: false
+      });
 
-    return;
+      // Send a message that can be forwarded / shared
+      await telegram(env, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: "⚔️ *چالش با دوست*\n\nروی دکمه زیر بزن و یک دوست را انتخاب کن تا بازی را برایش بفرستی:",
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📤 ارسال به دوست",
+                switch_inline_query: "ninja"
+              }
+            ]
+          ]
+        }
+      });
+
+      return;
+    }
+
+    if (data === "play_group") {
+      await telegram(env, "answerCallbackQuery", {
+        callback_query_id: callback.id
+      });
+
+      await telegram(env, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: "👥 *بازی در گروه*\n\n۱. به گروه مورد نظرت برو\n۲. تایپ کن: `@gameifyrbot`\n۳. کارت بازی را انتخاب کن و بفرست\n\nبعد همه اعضای گروه می‌توانند بازی کنند و جدول امتیازات مخصوص همان گروه ساخته می‌شود.",
+        parse_mode: "Markdown"
+      });
+
+      return;
+    }
   }
 
 
@@ -136,47 +187,44 @@ async function handleTelegramUpdate(update, env, request) {
     return;
   }
 
-  const text =
-    message.text.trim().toLowerCase();
-
-  const botUsername =
-    (env.BOT_USERNAME || "").toLowerCase();
-
+  const text = message.text.trim().toLowerCase();
+  const botUsername = (env.BOT_USERNAME || "").toLowerCase();
 
   const commands = [
     "/start",
     "/game",
     "/ninja",
-
     `/start@${botUsername}`,
     `/game@${botUsername}`,
     `/ninja@${botUsername}`
   ];
 
-
   if (!commands.includes(text)) {
     return;
   }
-
 
   if (!env.GAME_SHORT_NAME) {
     return;
   }
 
-
-  /*
-   * SEND GAME
-   */
-
-  await telegram(env, "sendGame", {
+  // Show main menu with 3 buttons
+  await telegram(env, "sendMessage", {
     chat_id: message.chat.id,
-    game_short_name: env.GAME_SHORT_NAME,
-
-    reply_parameters: {
-      message_id: message.message_id
-    },
-
-    protect_content: false
+    text: "🥷 *Ninja Fruit*\n\nمیوه‌ها را ببر، از بمب‌ها فرار کن!\n\nیکی از حالت‌های زیر را انتخاب کن:",
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "🎮 بازی تکی", callback_data: "play_solo" }
+        ],
+        [
+          { text: "👥 بازی با دوست", callback_data: "play_friend" }
+        ],
+        [
+          { text: "🏆 بازی در گروه", callback_data: "play_group" }
+        ]
+      ]
+    }
   });
 }
 
@@ -188,64 +236,26 @@ async function handleTelegramUpdate(update, env, request) {
 async function setWebhook(request, env) {
 
   if (!env.BOT_TOKEN) {
-    return json(
-      {
-        ok: false,
-        error: "BOT_TOKEN is missing"
-      },
-      500
-    );
+    return json({ ok: false, error: "BOT_TOKEN is missing" }, 500);
   }
-
 
   if (!env.WEBHOOK_SECRET) {
-    return json(
-      {
-        ok: false,
-        error: "WEBHOOK_SECRET is missing"
-      },
-      500
-    );
+    return json({ ok: false, error: "WEBHOOK_SECRET is missing" }, 500);
   }
 
-
-  const url =
-    new URL(request.url);
-
-  const secret =
-    url.searchParams.get("secret");
-
+  const url = new URL(request.url);
+  const secret = url.searchParams.get("secret");
 
   if (secret !== env.WEBHOOK_SECRET) {
-    return json(
-      {
-        ok: false,
-        error: "Unauthorized"
-      },
-      401
-    );
+    return json({ ok: false, error: "Unauthorized" }, 401);
   }
 
+  const webhookUrl = `${url.origin}/telegram/webhook`;
 
-  const webhookUrl =
-    `${url.origin}/telegram/webhook`;
-
-
-  const result =
-    await telegram(
-      env,
-      "setWebhook",
-      {
-        url: webhookUrl,
-
-        allowed_updates: [
-          "message",
-          "callback_query",
-          "inline_query"
-        ]
-      }
-    );
-
+  const result = await telegram(env, "setWebhook", {
+    url: webhookUrl,
+    allowed_updates: ["message", "callback_query", "inline_query"]
+  });
 
   return json(result);
 }
@@ -258,30 +268,16 @@ async function setWebhook(request, env) {
 async function getWebhookInfo(env) {
 
   if (!env.BOT_TOKEN) {
-    return json(
-      {
-        ok: false,
-        error: "BOT_TOKEN is missing"
-      },
-      500
-    );
+    return json({ ok: false, error: "BOT_TOKEN is missing" }, 500);
   }
 
-
-  const result =
-    await telegram(
-      env,
-      "getWebhookInfo",
-      {}
-    );
-
-
+  const result = await telegram(env, "getWebhookInfo", {});
   return json(result);
 }
 
 
 /* ---------------------------------------------
-   SUBMIT SCORE (for group leaderboards)
+   SUBMIT SCORE
 --------------------------------------------- */
 
 async function submitScore(request, env) {
@@ -344,21 +340,12 @@ async function submitScore(request, env) {
 --------------------------------------------- */
 
 async function health(env) {
-
   return json({
     ok: true,
-
-    game:
-      env.GAME_SHORT_NAME || null,
-
-    worker:
-      "ninja-fruit",
-
-    telegramConfigured:
-      Boolean(env.BOT_TOKEN),
-
-    webhookConfigured:
-      Boolean(env.WEBHOOK_SECRET)
+    game: env.GAME_SHORT_NAME || null,
+    worker: "ninja-fruit",
+    telegramConfigured: Boolean(env.BOT_TOKEN),
+    webhookConfigured: Boolean(env.WEBHOOK_SECRET)
   });
 }
 
@@ -368,99 +355,36 @@ async function health(env) {
 --------------------------------------------- */
 
 export default {
-
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
 
-    const url =
-      new URL(request.url);
-
-
-    /* HEALTH */
-
-    if (
-      url.pathname === "/api/health" &&
-      request.method === "GET"
-    ) {
+    if (url.pathname === "/api/health" && request.method === "GET") {
       return health(env);
     }
 
-
-    /* SET WEBHOOK */
-
-    if (
-      url.pathname === "/api/set-webhook" &&
-      request.method === "GET"
-    ) {
+    if (url.pathname === "/api/set-webhook" && request.method === "GET") {
       return setWebhook(request, env);
     }
 
-
-    /* WEBHOOK INFO */
-
-    if (
-      url.pathname === "/api/webhook-info" &&
-      request.method === "GET"
-    ) {
+    if (url.pathname === "/api/webhook-info" && request.method === "GET") {
       return getWebhookInfo(env);
     }
 
-
-    /* SUBMIT SCORE */
-
-    if (
-      url.pathname === "/api/submit-score" &&
-      (request.method === "GET" || request.method === "POST")
-    ) {
+    if (url.pathname === "/api/submit-score" && (request.method === "GET" || request.method === "POST")) {
       return submitScore(request, env);
     }
 
-
-    /* TELEGRAM WEBHOOK */
-
-    if (
-      url.pathname === "/telegram/webhook" &&
-      request.method === "POST"
-    ) {
-
+    if (url.pathname === "/telegram/webhook" && request.method === "POST") {
       try {
-
-        const update =
-          await request.json();
-
-
-        /*
-         * Respond quickly to Telegram.
-         */
-
-        ctx.waitUntil(
-          handleTelegramUpdate(
-            update,
-            env,
-            request
-          )
-        );
-
-
-        return json({
-          ok: true
-        });
-
+        const update = await request.json();
+        ctx.waitUntil(handleTelegramUpdate(update, env, request));
+        return json({ ok: true });
       } catch (error) {
-
-        return json(
-          {
-            ok: false,
-            error:
-              "Invalid Telegram update"
-          },
-          400
-        );
+        return json({ ok: false, error: "Invalid Telegram update" }, 400);
       }
     }
-
-
-    /* STATIC GAME */
 
     return env.ASSETS.fetch(request);
   }
 };
+    
