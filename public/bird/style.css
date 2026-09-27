@@ -1,0 +1,16 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#70c5ce;font-family:system-ui,-apple-system,sans-serif}
+body{touch-action:none}
+#game{position:relative;width:100%;height:100%;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;top:calc(env(safe-area-inset-top)+14px);left:14px;right:14px;display:flex;justify-content:space-between;gap:10px;pointer-events:none;z-index:5}
+.pill{min-width:80px;padding:8px 14px;border-radius:16px;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);color:#fff;text-align:center}
+.pill .label{display:block;font-size:10px;letter-spacing:1px;opacity:.7}
+.pill strong{font-size:22px}
+#message{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:10}
+.card{width:min(84%,340px);padding:32px 24px;border-radius:24px;background:rgba(255,255,255,.95);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.logo{font-size:52px}
+h1{margin:8px 0;font-size:26px;color:#222}
+p{margin:0 0 22px;color:#555}
+button{font:inherit;font-weight:800;cursor:pointer;width:100%;border:0;border-radius:14px;padding:14px;background:linear-gradient(135deg,#ffcc33,#ff9900);color:#222}
+.hidden{display:none!important}
