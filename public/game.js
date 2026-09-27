@@ -4,6 +4,7 @@
   const scoreEl = document.getElementById("score");
   const bestEl = document.getElementById("best");
   const comboEl = document.getElementById("combo");
+  const levelEl = document.getElementById("levelText");
   const livesEl = document.getElementById("lives");
   const message = document.getElementById("message");
   const messageText = document.getElementById("messageText");
@@ -353,6 +354,7 @@
   function updateHud() {
     scoreEl.textContent = score;
     comboEl.textContent = "x" + combo;
+    if (levelEl) levelEl.textContent = "LV " + level;
   }
 
   function startGame() {
@@ -527,11 +529,6 @@
       if (trails[i].life <= 0) trails.splice(i, 1);
     }
     drawTrail();
-
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "700 12px system-ui";
-    ctx.textAlign = "center";
-    ctx.fillText("LV " + level, W / 2, H - 18);
 
     ctx.restore();
     requestAnimationFrame(loop);
