@@ -566,9 +566,24 @@
     requestAnimationFrame(loop);
   }
 
-  // Initial screen
+  // Initial screen + debug params
   updateLives();
   updateHud();
   message.classList.remove("hidden");
+
+  // Temporary debug: show URL params
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const debugInfo = [
+      "uid=" + (params.get("uid") || "null"),
+      "cid=" + (params.get("cid") || "null"),
+      "mid=" + (params.get("mid") || "null"),
+      "imid=" + (params.get("imid") || "null")
+    ].join(" | ");
+    const p = document.getElementById("messageText");
+    if (p) {
+      p.innerHTML = "Slice fruit. Avoid bombs.<br><br><small style=\"opacity:.6;font-size:11px;word-break:break-all\">" + debugInfo + "</small>";
+    }
+  } catch {}
 })();
-      
+  
