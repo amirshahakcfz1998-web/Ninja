@@ -25,6 +25,13 @@
   let gameStart = 0;
   let shake = 0;
 
+
+  // Background ninja image
+  const bgImg = new Image();
+  bgImg.src = "/ninja-bg.png";
+  let bgReady = false;
+  bgImg.onload = () => { bgReady = true; };
+
   // ---------- Real audio files ----------
   const sounds = {
     slice: new Audio("/sounds/slice.mp3"),
@@ -112,6 +119,20 @@
     g.addColorStop(1, "#060a12");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+
+    // Ninja background image (centered, faded)
+    if (bgReady && bgImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      const maxSize = Math.min(W * 0.75, H * 0.55);
+      const scale = Math.min(maxSize / bgImg.naturalWidth, maxSize / bgImg.naturalHeight);
+      const iw = bgImg.naturalWidth * scale;
+      const ih = bgImg.naturalHeight * scale;
+      const ix = (W - iw) / 2;
+      const iy = (H - ih) / 2 - H * 0.05;
+      ctx.drawImage(bgImg, ix, iy, iw, ih);
+      ctx.restore();
+    }
 
     // Soft light in center
     const rg = ctx.createRadialGradient(W / 2, H * 0.35, 10, W / 2, H * 0.5, Math.max(W, H) * 0.7);
