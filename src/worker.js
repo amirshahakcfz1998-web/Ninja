@@ -42,8 +42,12 @@ function getGameUrl(request, gamePath = "/", extraParams = {}) {
 }
 
 function getGamePath(shortName) {
-  if (shortName === "Flyingbird") return "/bird/";
+  if (String(shortName || "").toLowerCase() === "flyingbird") return "/bird/";
   return "/"; // ninja fruit (default)
+}
+
+function gameSlug(shortName) {
+  return String(shortName || "").toLowerCase() === "flyingbird" ? "bird" : "ninja";
 }
 
 /* ---------------------------------------------
@@ -221,6 +225,56 @@ async function getWebhookInfo(env) {
   return json(await telegram(env, "getWebhookInfo", {}));
 }
 
+/* ---------------------------------------------
+   BEST-SCORE HISTORY (per-group records in KV)
+   Key:
+     best:{chatKey}:{game}:{userId} -> {uid, n, s, t}
+   chatKey "0" is used for inline messages (no chat).
+   A score is forwarded to Telegram only when it beats
+   the player's own record, so the game message's native
+   "Top Players" list always shows best scores.
+--------------------------------------------- */
+
+const bestKey = (chatKey, slug, uid) => `best:${chatKey}:${slug}:${uid}`;
+
+async function readBest(env, chatKey, slug, uid) {
+  try {
+    const raw = await env.SCORES.get(bestKey(chatKey, slug, uid));
+    if (!raw) return null;
+    const rec = JSON.parse(raw);
+    if (!rec || !Number.isFinite(rec.s)) return null;
+    return rec;
+  } catch {
+    return null;
+  }
+}
+
+// Display name comes from Telegram itself, not from the client.
+async function resolveName(env, chatId, userId, fallback) {
+  const clean = (v) => (v ? String(v).slice(0, 64) : "") || "بازیکن";
+  if (!Number.isFinite(chatId)) return clean(fallback);
+  try {
+    const res = await telegram(env, "getChatMember", { chat_id: chatId, user_id: userId });
+    const u = res && res.result && res.result.user;
+    if (u && u.first_name) {
+      const full = (u.first_name + (u.last_name ? " " + u.last_name : "")).trim();
+      if (full) return full.slice(0, 64);
+    }
+  } catch {
+    // fall through to fallback
+  }
+  return clean(fallback);
+}
+
+// Stores the score only when it beats the player's own record.
+async function recordBest(env, chatKey, slug, uid, score, name) {
+  const prev = await readBest(env, chatKey, slug, uid);
+  if (prev && score <= prev.s) return { isRecord: false, best: prev.s };
+  const rec = { uid, n: name, s: score, t: Date.now() };
+  await env.SCORES.put(bestKey(chatKey, slug, uid), JSON.stringify(rec));
+  return { isRecord: true, best: score };
+}
+
 async function submitScore(request, env) {
   if (!env.BOT_TOKEN) return json({ ok: false, error: "BOT_TOKEN is missing" }, 500);
 
@@ -231,30 +285,58 @@ async function submitScore(request, env) {
     return json({ ok: false, error: "Invalid body" }, 400);
   }
 
-  const score = Number(data.score);
+  const score = Math.floor(Number(data.score));
   const userId = Number(data.uid);
   if (!Number.isFinite(score) || score < 0 || !Number.isFinite(userId)) {
     return json({ ok: false, error: "Invalid score or user" }, 400);
   }
 
+  const slug = gameSlug(data.game);
+  const chatId = Number(data.cid);
+  const chatKey = Number.isFinite(chatId) ? String(chatId) : "0";
+  const messageId = Number(data.mid);
+
+  // Persistent per-group record: only a new personal best is stored
+  // and forwarded to Telegram. Lower scores are ignored.
+  let stored = null;
+  if (env.SCORES) {
+    try {
+      const name = await resolveName(env, chatId, userId, data.name);
+      stored = await recordBest(env, chatKey, slug, userId, score, name);
+    } catch (e) {
+      console.error("leaderboard store failed:", e);
+      stored = null;
+    }
+  }
+
+  if (stored && !stored.isRecord) {
+    return json({ ok: true, isRecord: false, best: stored.best, stored: true });
+  }
+
   const body = {
     user_id: userId,
-    score: Math.floor(score),
-    force: true,
+    score,
+    force: false,
     disable_edit_message: false
   };
 
   if (data.imid) body.inline_message_id = String(data.imid);
-  else if (data.cid && data.mid) {
-    body.chat_id = Number(data.cid);
-    body.message_id = Number(data.mid);
+  else if (Number.isFinite(chatId) && Number.isFinite(messageId)) {
+    body.chat_id = chatId;
+    body.message_id = messageId;
   } else {
     return json({ ok: false, error: "Missing chat/message context" }, 400);
   }
 
   try {
     const result = await telegram(env, "setGameScore", body);
-    return json({ ok: true, result });
+    return json({
+      ok: true,
+      isRecord: stored ? stored.isRecord : true,
+      best: stored ? stored.best : score,
+      stored: Boolean(stored),
+      result
+    });
   } catch (e) {
     return json({ ok: false, error: String(e.message || e) }, 500);
   }
@@ -266,7 +348,8 @@ async function health(env) {
     games: [env.GAME_SHORT_NAME || "Game", "flyingbird"],
     worker: "ninja-fruit",
     telegramConfigured: Boolean(env.BOT_TOKEN),
-    webhookConfigured: Boolean(env.WEBHOOK_SECRET)
+    webhookConfigured: Boolean(env.WEBHOOK_SECRET),
+    kvConfigured: Boolean(env.SCORES)
   });
 }
 
@@ -292,4 +375,5 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-      
+
+                       
