@@ -197,6 +197,8 @@
 
   async function submitScore(value) {
     let status = "no-context";
+    let isRecord = false;
+    let serverBest = NaN;
 
     try {
       if (window.TelegramGameProxy?.shareScore) {
@@ -214,6 +216,7 @@
       const cid = params.get("cid");
       const mid = params.get("mid");
       const imid = params.get("imid");
+      const game = params.get("game");
 
       if (!uid && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
         uid = String(window.Telegram.WebApp.initDataUnsafe.user.id);
@@ -221,6 +224,7 @@
 
       if (uid && (imid || (cid && mid))) {
         const body = { score: value, uid: Number(uid) };
+        if (game) body.game = game;
         if (imid) body.imid = imid;
         if (cid) body.cid = cid;
         if (mid) body.mid = mid;
@@ -231,7 +235,9 @@
           body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => ({}));
-        status = data.ok ? "server-ok" : ("server-fail:" + (data.error || res.status));
+        if (Number.isFinite(Number(data.best))) serverBest = Number(data.best);
+        isRecord = data.ok === true && data.isRecord === true;
+        status = data.ok ? (isRecord ? "server-ok-record" : "server-ok") : ("server-fail:" + (data.error || res.status));
       } else {
         status = "missing-params uid=" + (uid||"null") + " imid=" + (imid||"null");
       }
@@ -242,7 +248,9 @@
     try {
       const p = document.getElementById("messageText");
       if (p) {
-        p.innerHTML = `Score: <b>${value}</b><br>Best: <b>${best}</b><br><br><small style="opacity:.65;font-size:11px;word-break:break-all">${status}</small>`;
+        const shownBest = Number.isFinite(serverBest) ? serverBest : best;
+        const recordLine = isRecord ? `🎉 <b>رکورد جدید!</b><br>` : "";
+        p.innerHTML = `Score: <b>${value}</b><br>Best: <b>${shownBest}</b><br>${recordLine}<br><small style="opacity:.65;font-size:11px;word-break:break-all">${status}</small>`;
       }
     } catch {}
   }
@@ -315,4 +323,5 @@
   // Show start screen
   message.classList.remove("hidden");
 })();
-      
+
+        
