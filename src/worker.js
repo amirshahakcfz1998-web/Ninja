@@ -97,7 +97,11 @@ async function handleTelegramUpdate(update, env, request) {
         uid: callback.from?.id,
         cid: callback.message?.chat?.id,
         mid: callback.message?.message_id,
-        game: shortName
+        game: shortName,
+        // Cache-buster: Telegram clients reuse a cached game page (with stale
+        // query params) across "Play" taps. A unique URL per tap forces a fresh
+        // page load so uid/imid always match the tapped message.
+        t: Date.now()
       };
 
       if (callback.inline_message_id) {
@@ -381,4 +385,5 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-      
+
+    
