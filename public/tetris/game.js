@@ -20,6 +20,21 @@ const pauseActions = document.getElementById("pauseActions");
 const restartButton = document.getElementById("restartButton");
 const quitButton = document.getElementById("quitButton");
 
+// Surface runtime errors on the start card (debug aid; invisible when healthy).
+// Note: a truncated file (parse error) kills the whole script, so this only
+// catches runtime errors, not incomplete uploads.
+window.addEventListener("error", (e) => {
+  try {
+    if (!gameStarted && messageTextEl) {
+      const small = document.createElement("small");
+      small.style.color = "#b91c1c";
+      small.textContent = "خطا: " + (e.message || "unknown");
+      messageTextEl.appendChild(document.createElement("br"));
+      messageTextEl.appendChild(small);
+    }
+  } catch (_) { /* never break the game */ }
+});
+
 // ---------- Config ----------
 const COLS = 10;
 const ROWS = 20;
@@ -56,35 +71,43 @@ const Sound = (() => {
 
   function ensure() {
     if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return false;
-      ctx = new AC();
-      master = ctx.createGain();
-      master.gain.value = 0.5;
-      master.connect(ctx.destination);
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.5;
+        master.connect(ctx.destination);
+      } catch (e) {
+        return false; // Web Audio unavailable: stay silent, keep the game alive
+      }
     }
-    if (ctx.state === "suspended") ctx.resume();
+    try {
+      if (ctx.state === "suspended") ctx.resume();
+    } catch (e) { /* ignore */ }
     return true;
   }
 
   function tone(freq, dur, type, vol, when, slideTo) {
-    if (muted || !ensure()) return;
-    type = type || "square";
-    vol = vol == null ? 0.35 : vol;
-    when = when || 0;
-    const t0 = ctx.currentTime + when;
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g);
-    g.connect(master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.05);
+    try {
+      if (muted || !ensure()) return;
+      type = type || "square";
+      vol = vol == null ? 0.35 : vol;
+      when = when || 0;
+      const t0 = ctx.currentTime + when;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.05);
+    } catch (e) { /* sound must never break the game */ }
   }
 
   return {
@@ -682,26 +705,4 @@ function bindHoldButton(el, onPress) {
     delayTimer = repeatTimer = null;
   };
   el.addEventListener("pointerdown", start);
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", end);
-  el.addEventListener("pointerleave", end);
-  el.addEventListener("contextmenu", (e) => e.preventDefault());
-}
-
-function bindTapButton(el, onTap) {
-  const handler = (e) => {
-    e.preventDefault();
-    Sound.unlock();
-    if (!running || paused) return;
-    onTap();
-  };
-  el.addEventListener("pointerdown", handler);
-  el.addEventListener("contextmenu", (e) => e.preventDefault());
-}
-
-document.querySelectorAll("#controls button").forEach((btn) => {
-  const act = btn.getAttribute("data-act");
-  if (act === "left") bindHoldButton(btn, () => { if (move(-1, 0)) Sound.move(); });
-  else if (act === "right") bindHoldButton(btn, () => { if (move(1, 0)) Sound.move(); });
-  else if (act === "rotate") bindTapButton(btn, () => { if (rotatePiece(1)) Sound.rotate(); });
-  else if (act === "drop") bindTapButton(btn, har
+  el.addEven
