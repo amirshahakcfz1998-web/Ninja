@@ -15,6 +15,7 @@ const messageTitleEl = document.getElementById("messageTitle");
 const messageTextEl = document.getElementById("messageText");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
+const muteButton = document.getElementById("muteButton");
 const pauseActions = document.getElementById("pauseActions");
 const restartButton = document.getElementById("restartButton");
 const quitButton = document.getElementById("quitButton");
@@ -45,6 +46,85 @@ const PIECES = {
 const TYPES = Object.keys(PIECES);
 const LINE_SCORES = [0, 100, 300, 500, 800];
 const KICKS = [[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,1],[1,1]];
+
+// ---------- Sound (Web Audio, no external files) ----------
+const Sound = (() => {
+  let ctx = null;
+  let master = null;
+  let muted = false;
+  try { muted = localStorage.getItem("tetrisMuted") === "1"; } catch (e) {}
+
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return true;
+  }
+
+  function tone(freq, dur, type, vol, when, slideTo) {
+    if (muted || !ensure()) return;
+    type = type || "square";
+    vol = vol == null ? 0.35 : vol;
+    when = when || 0;
+    const t0 = ctx.currentTime + when;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  return {
+    unlock() { try { ensure(); } catch (e) {} },
+    toggleMute() {
+      muted = !muted;
+      try { localStorage.setItem("tetrisMuted", muted ? "1" : "0"); } catch (e) {}
+      return muted;
+    },
+    isMuted() { return muted; },
+    move() { tone(210, 0.045, "square", 0.22); },
+    rotate() { tone(330, 0.06, "square", 0.28); },
+    lock() { tone(150, 0.07, "triangle", 0.45); },
+    hardDrop() { tone(95, 0.16, "sawtooth", 0.5, 0, 45); },
+    clear(n) {
+      const steps = [523, 659, 784, 1047];
+      const base = steps[Math.min(Math.max(n, 1), 4) - 1];
+      tone(base, 0.09, "square", 0.32);
+      tone(base * 1.25, 0.09, "square", 0.32, 0.09);
+      tone(base * 1.5, 0.16, "square", 0.38, 0.18);
+      if (n >= 4) tone(base * 2, 0.28, "square", 0.42, 0.34); // tetris fanfare
+    },
+    levelUp() {
+      tone(440, 0.1, "square", 0.32);
+      tone(554, 0.1, "square", 0.32, 0.1);
+      tone(659, 0.2, "square", 0.38, 0.2);
+    },
+    gameOver() {
+      tone(392, 0.16, "sawtooth", 0.4);
+      tone(311, 0.16, "sawtooth", 0.4, 0.16);
+      tone(233, 0.34, "sawtooth", 0.45, 0.32);
+    },
+    start() {
+      tone(262, 0.08, "square", 0.3);
+      tone(392, 0.08, "square", 0.3, 0.08);
+      tone(523, 0.14, "square", 0.35, 0.16);
+    },
+    pause() { tone(330, 0.08, "square", 0.28); }
+  };
+})();
 
 // ---------- State ----------
 let board = [];
@@ -141,7 +221,7 @@ function move(dx, dy) {
 }
 
 function rotatePiece(dir) {
-  if (!active || !running || paused) return;
+  if (!active || !running || paused) return false;
   const m = rotateMatrix(active.matrix, dir);
   for (const [kx, ky] of KICKS) {
     if (!collides(m, active.x + kx, active.y + ky)) {
@@ -149,9 +229,10 @@ function rotatePiece(dir) {
       active.x += kx;
       active.y += ky;
       resetLock();
-      return;
+      return true;
     }
   }
+  return false;
 }
 
 function ghostY() {
@@ -162,6 +243,7 @@ function ghostY() {
 
 function hardDrop() {
   if (!active || !running || paused) return;
+  Sound.hardDrop();
   let dist = 0;
   while (!collides(active.matrix, active.x, active.y + 1)) {
     active.y++;
@@ -201,7 +283,12 @@ function clearLines() {
   if (cleared > 0) {
     score += LINE_SCORES[cleared] * level;
     lines += cleared;
-    level = Math.floor(lines / 10) + 1;
+    Sound.clear(cleared);
+    const newLevel = Math.floor(lines / 10) + 1;
+    if (newLevel > level) {
+      level = newLevel;
+      Sound.levelUp();
+    }
     updateHUD();
   }
 }
@@ -231,7 +318,10 @@ function tick(dt) {
   }
   if (active && collides(active.matrix, active.x, active.y + 1)) {
     lockAcc += dt;
-    if (lockAcc >= LOCK_DELAY) lockPiece();
+    if (lockAcc >= LOCK_DELAY) {
+      lockPiece();
+      Sound.lock();
+    }
   } else {
     lockAcc = 0;
     lockResets = 0;
@@ -280,6 +370,8 @@ function startGame() {
   gameStarted = true;
   messageEl.classList.add("hidden");
   pauseButton.classList.remove("hidden");
+  Sound.unlock();
+  Sound.start();
   lastTime = performance.now();
   requestAnimationFrame(loop);
 }
@@ -294,12 +386,14 @@ function endGame() {
     try { localStorage.setItem("tetrisBest", String(best)); } catch (e) {}
   }
   updateHUD();
+  Sound.gameOver();
   submitScore(score);
 }
 
 function togglePause() {
   if (!gameStarted || !running) return;
   paused = !paused;
+  Sound.pause();
   if (paused) {
     showCard("مکث", "برای ادامه دکمه را بزن.", "ادامه");
     pauseActions.classList.remove("hidden");
@@ -325,6 +419,17 @@ restartButton.addEventListener("click", () => {
 quitButton.addEventListener("click", () => {
   if (gameStarted && running) endGame();
 });
+
+// Mute toggle (persisted in localStorage)
+function refreshMuteIcon() {
+  muteButton.textContent = Sound.isMuted() ? "🔇" : "🔊";
+}
+muteButton.addEventListener("click", () => {
+  Sound.unlock();
+  Sound.toggleMute();
+  refreshMuteIcon();
+});
+refreshMuteIcon();
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && running && !paused) togglePause();
@@ -538,17 +643,18 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   const actions = {
-    ArrowLeft: () => move(-1, 0),
-    ArrowRight: () => move(1, 0),
+    ArrowLeft: () => { if (move(-1, 0)) Sound.move(); },
+    ArrowRight: () => { if (move(1, 0)) Sound.move(); },
     ArrowDown: () => { softDropHeld = true; },
-    ArrowUp: () => rotatePiece(1),
-    KeyX: () => rotatePiece(1),
-    KeyZ: () => rotatePiece(-1),
+    ArrowUp: () => { if (rotatePiece(1)) Sound.rotate(); },
+    KeyX: () => { if (rotatePiece(1)) Sound.rotate(); },
+    KeyZ: () => { if (rotatePiece(-1)) Sound.rotate(); },
     Space: () => hardDrop()
   };
   const fn = actions[e.code];
   if (fn) {
     e.preventDefault();
+    Sound.unlock();
     if (running && !paused && !e.repeat) fn();
   }
 });
@@ -562,6 +668,7 @@ function bindHoldButton(el, onPress) {
   let repeatTimer = null;
   const start = (e) => {
     e.preventDefault();
+    Sound.unlock();
     if (!running || paused) return;
     onPress();
     delayTimer = setTimeout(() => {
@@ -584,6 +691,7 @@ function bindHoldButton(el, onPress) {
 function bindTapButton(el, onTap) {
   const handler = (e) => {
     e.preventDefault();
+    Sound.unlock();
     if (!running || paused) return;
     onTap();
   };
@@ -593,30 +701,7 @@ function bindTapButton(el, onTap) {
 
 document.querySelectorAll("#controls button").forEach((btn) => {
   const act = btn.getAttribute("data-act");
-  if (act === "left") bindHoldButton(btn, () => move(-1, 0));
-  else if (act === "right") bindHoldButton(btn, () => move(1, 0));
-  else if (act === "rotate") bindTapButton(btn, () => rotatePiece(1));
-  else if (act === "drop") bindTapButton(btn, hardDrop);
-  else if (act === "down") {
-    btn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      if (running && !paused) softDropHeld = true;
-    });
-    const release = (e) => { if (e) e.preventDefault(); softDropHeld = false; };
-    btn.addEventListener("pointerup", release);
-    btn.addEventListener("pointercancel", release);
-    btn.addEventListener("pointerleave", release);
-    btn.addEventListener("contextmenu", (e) => e.preventDefault());
-  }
-});
-
-// ---------- Init ----------
-board = newBoard();
-updateHUD();
-draw();
-showCard(
-  "🧱 تتریس",
-  "قطعه‌ها را بچین و خط‌های افقی را کامل کن.<br>◀ ▶ حرکت &nbsp;•&nbsp; ⟳ چرخش<br>▼ پایین &nbsp;•&nbsp; ⤓ سقوط ناگهانی",
-  "شروع"
-);
-       
+  if (act === "left") bindHoldButton(btn, () => { if (move(-1, 0)) Sound.move(); });
+  else if (act === "right") bindHoldButton(btn, () => { if (move(1, 0)) Sound.move(); });
+  else if (act === "rotate") bindTapButton(btn, () => { if (rotatePiece(1)) Sound.rotate(); });
+  else if (act === "drop") bindTapButton(btn, har
