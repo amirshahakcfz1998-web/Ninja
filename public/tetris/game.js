@@ -15,6 +15,9 @@ const messageTitleEl = document.getElementById("messageTitle");
 const messageTextEl = document.getElementById("messageText");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
+const pauseActions = document.getElementById("pauseActions");
+const restartButton = document.getElementById("restartButton");
+const quitButton = document.getElementById("quitButton");
 
 // ---------- Config ----------
 const COLS = 10;
@@ -255,6 +258,7 @@ function showCard(title, html, buttonText) {
   messageTitleEl.textContent = title;
   messageTextEl.innerHTML = html;
   startButton.textContent = buttonText;
+  pauseActions.classList.add("hidden");
   messageEl.classList.remove("hidden");
 }
 
@@ -298,6 +302,7 @@ function togglePause() {
   paused = !paused;
   if (paused) {
     showCard("مکث", "برای ادامه دکمه را بزن.", "ادامه");
+    pauseActions.classList.remove("hidden");
   } else {
     messageEl.classList.add("hidden");
   }
@@ -310,6 +315,16 @@ startButton.addEventListener("click", () => {
 });
 
 pauseButton.addEventListener("click", togglePause);
+
+// Pause menu actions: restart starts a fresh run, quit ends the run
+// (submits the score) and shows the game-over card.
+restartButton.addEventListener("click", () => {
+  if (gameStarted && running) startGame();
+});
+
+quitButton.addEventListener("click", () => {
+  if (gameStarted && running) endGame();
+});
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && running && !paused) togglePause();
@@ -604,3 +619,4 @@ showCard(
   "قطعه‌ها را بچین و خط‌های افقی را کامل کن.<br>◀ ▶ حرکت &nbsp;•&nbsp; ⟳ چرخش<br>▼ پایین &nbsp;•&nbsp; ⤓ سقوط ناگهانی",
   "شروع"
 );
+       
