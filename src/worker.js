@@ -45,6 +45,7 @@ function getGamePath(shortName) {
   const name = String(shortName || "").toLowerCase();
   if (name === "flyingbird") return "/bird/";
   if (name === "tetris") return "/tetris/";
+  if (name === "drive") return "/drive/";
   return "/"; // ninja fruit (default)
 }
 
@@ -52,6 +53,7 @@ function gameSlug(shortName) {
   const name = String(shortName || "").toLowerCase();
   if (name === "flyingbird") return "bird";
   if (name === "tetris") return "tetris";
+  if (name === "drive") return "drive";
   return "ninja";
 }
 
@@ -85,6 +87,13 @@ async function handleTelegramUpdate(update, env, request) {
       type: "game",
       id: "tetris",
       game_short_name: "tetris"
+    });
+
+    // Drive (car racer)
+    results.push({
+      type: "game",
+      id: "drive",
+      game_short_name: "drive"
     });
 
     await telegram(env, "answerInlineQuery", {
@@ -158,6 +167,15 @@ async function handleTelegramUpdate(update, env, request) {
       return;
     }
 
+    if (data === "play_drive_solo") {
+      await telegram(env, "answerCallbackQuery", { callback_query_id: callback.id });
+      await telegram(env, "sendGame", {
+        chat_id: callback.message.chat.id,
+        game_short_name: "drive"
+      });
+      return;
+    }
+
     if (data === "play_friend") {
       await telegram(env, "answerCallbackQuery", {
         callback_query_id: callback.id,
@@ -217,6 +235,9 @@ async function handleTelegramUpdate(update, env, request) {
         ],
         [
           { text: "🧱 تتریس (تکی)", callback_data: "play_tetris_solo" }
+        ],
+        [
+          { text: "🏎️ ماشین‌سواری (تکی)", callback_data: "play_drive_solo" }
         ],
         [
           { text: "👥 بازی با دوست", callback_data: "play_friend" }
@@ -379,7 +400,7 @@ async function submitScore(request, env) {
 async function health(env) {
   return json({
     ok: true,
-    games: [env.GAME_SHORT_NAME || "Game", "flyingbird", "tetris"],
+    games: [env.GAME_SHORT_NAME || "Game", "flyingbird", "tetris", "drive"],
     worker: "ninja-fruit",
     telegramConfigured: Boolean(env.BOT_TOKEN),
     webhookConfigured: Boolean(env.WEBHOOK_SECRET),
@@ -410,4 +431,4 @@ export default {
   }
 };
 
-    
+        
