@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0d1c">
+  <title>بریکس بریکر</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      background: #070a14;
+      color: #e2e8f0;
+      font-family: system-ui, "Vazirmatn", Tahoma, sans-serif;
+      display: flex; justify-content: center;
+      overflow: hidden;
+      user-select: none; -webkit-user-select: none;
+    }
+    #wrap {
+      width: 100%; max-width: 430px; height: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    }
+    #hud {
+      width: 100%; max-width: 420px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 2px;
+    }
+    .pill {
+      background: #141b31; border: 1px solid #2b3a5e;
+      border-radius: 999px; padding: 6px 12px;
+      font-size: 14px; font-weight: 700; white-space: nowrap;
+    }
+    .spacer { flex: 1; }
+    .iconbtn {
+      font-family: inherit; font-size: 16px;
+      width: 38px; height: 38px;
+      border: 1px solid #2b3a5e; border-radius: 12px;
+      background: #141b31; color: #e2e8f0; cursor: pointer;
+    }
+    .iconbtn:active { background: #22d3ee; color: #06202a; }
+    #stage { position: relative; width: 100%; max-width: 420px; }
+    #canvas {
+      width: 100%; aspect-ratio: 420 / 700;
+      display: block; border-radius: 14px;
+      background: #0a0d1c;
+      border: 1px solid #1e2a4a;
+      touch-action: none;
+    }
+    #card {
+      position: absolute; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(4, 7, 16, 0.78);
+      border-radius: 14px; z-index: 5;
+    }
+    #card.show { display: flex; }
+    #cardInner {
+      background: #101828;
+      border: 1px solid #2b3a5e;
+      border-radius: 16px;
+      padding: 24px 22px; margin: 16px;
+      text-align: center; max-width: 330px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    }
+    #cardTitle { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    #cardText { font-size: 15px; line-height: 2; color: #cbd5e1; }
+    #cardButtons { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    #cardButtons button {
+      font-family: inherit; font-size: 15px; font-weight: 700;
+      border: none; border-radius: 12px; padding: 10px 22px;
+      background: #22d3ee; color: #06202a; cursor: pointer;
+    }
+    #cardButtons button:active { transform: scale(.96); }
+    #cardButtons button.ghost { background: #1e293b; color: #e2e8f0; }
+    #hint {
+      width: 100%; max-width: 420px;
+      text-align: center; font-size: 12px; color: #64748b;
+      line-height: 1.9; padding-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="hud">
+      <div class="pill">🎯 <span id="score">۰</span></div>
+      <div class="pill">🌊 <span id="round">۱</span></div>
+      <div class="pill">⚪ <span id="balls">۳</span></div>
+      <div class="spacer"></div>
+      <button id="muteBtn" class="iconbtn" title="صدا">🔊</button>
+      <button id="pauseBtn" class="iconbtn" title="توقف">⏸</button>
+    </div>
+    <div id="stage">
+      <canvas id="canvas" width="420" height="700"></canvas>
+      <div id="card">
+        <div id="cardInner">
+          <div id="cardTitle"></div>
+          <div id="cardText"></div>
+          <div id="cardButtons"></div>
+        </div>
+      </div>
+    </div>
+    <div id="hint">انگشتت را چپ و راست بکش تا نشانه بگیری، رها کن تا شلیک شود</div>
+  </div>
+  <script src="https://telegram.org/js/games.js"></script>
+  <script src="/bricks/game.js?v=1"></script>
+</body>
+</html>
